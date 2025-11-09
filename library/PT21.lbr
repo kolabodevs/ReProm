@@ -1059,13 +1059,13 @@
 </symbols>
 <devicesets>
 <deviceset name="PROM21">
-<description>&lt;h3&gt;This file is part of the RePromontory Project &lt;/h3&gt;
+<description>&lt;h3&gt;This file is part of the ReProm Project &lt;/h3&gt;
 &lt;p&gt;DISCLAIMER: &lt;/p&gt;
 &lt;p&gt;EVERYTHING IS PROVIDED AS IS, WITHOUT WARRANTY OF ANY KIND,&lt;/p&gt;
 &lt;p&gt;THE DESIGN HASN'T BEEN VERIFIED, JUST FOR YOUR REFERENCE. &lt;/p&gt;
 &lt;p&gt;NOT RESPONSIBLE FOR THE QUALITY.&lt;/p&gt;
 &lt;p&gt;If you find any issues with this file, please create an issue in the repo&lt;/p&gt;
-&lt;a href="https://projects.kolabo.dev/RePromontory"&gt;projects.kolabo.dev/RePromontory&lt;/a&gt;</description>
+&lt;a href="https://github.com/ReisWeirdStuff/ReProm/"&gt;github.com/ReisWeirdStuff/ReProm/&lt;/a&gt;</description>
 <gates>
 <gate name="A" symbol="PROM21_A" x="-182.88" y="-7.62"/>
 <gate name="B" symbol="PROM21_B" x="-41.2" y="26.9"/>
