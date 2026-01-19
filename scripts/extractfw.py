@@ -62,28 +62,46 @@ def generate_header(chip_model: str, custom_info: str, xdata: list) -> bytes:
         header += bytes(16)
 
     cleaned_xdata = []
-    for index, (addr_str, val_str) in enumerate(xdata):
+    for index, item in enumerate(xdata):
+        if not isinstance(item, (list, tuple)) or len(item) not in (2, 3):
+            print(f"Warning: Invalid entry at index {index}: {item}, Expected [addr, value] or [seg, addr, value]")
+            continue
+        if len(item) == 2:
+            seg_str, addr_str, val_str = "0", item[0], item[1]
+        else:
+            seg_str, addr_str, val_str = item
         try:
-            addr = int(addr_str, 16)
-            val = int(val_str, 16)
+            seg = int(str(seg_str), 16)
+            addr = int(str(addr_str), 16)
+            val = int(str(val_str), 16)
+            if seg < 0 or seg > 0xF:
+                print(f"Warning: Invalid Segment: {seg_str} at index {index}, Ignored")
+                continue
+            if seg > 2:
+                print(f"Warning: Segment {seg} at index {index} may be rejected by BootROM (expected 0-2)")
             if addr > 0xFFFF or val > 0xFFFFFFFF:
                 print(f"Warning: Invalid Address: {hex(addr)} or Value: {hex(val)}, Ignored")
                 continue
-            cleaned_xdata.append([addr, val])
+            cleaned_xdata.append([seg, addr, val])
         except ValueError:
-            print(f"Warning: Non-hex input at index {index}: Address='{addr_str}', Value='{val_str}', Ignored")
+            print(f"Warning: Non-hex input at index {index}: Segment='{seg_str}', Address='{addr_str}', Value='{val_str}', Ignored")
 
     if cleaned_xdata:
         if not custom_info:
             header += bytes(32)
-        for addr, val in cleaned_xdata:
+        for index, (seg, addr, val) in enumerate(cleaned_xdata):
             hex_len = len(f"{val:X}")
             if hex_len == 3:
                 data_length = 2
             else:
                 data_length = (hex_len + 1) // 2
+            op_map = {1: 1, 2: 2, 4: 4}
+            op_code = op_map.get(data_length)
+            if op_code is None:
+                print(f"Warning: Unsupported data length {data_length} at index {index}, Ignored")
+                continue
             header += b"\xCC"
-            header += bytes.fromhex(f"0{data_length}")
+            header += bytes([(seg << 4) | (op_code & 0xF)])
             header += struct.pack('<H', addr)
             if data_length == 4:
                 header += struct.pack('<I', val)
@@ -99,6 +117,25 @@ def generate_header(chip_model: str, custom_info: str, xdata: list) -> bytes:
     checksum = bytes([sum(header) & 0xFF])
     crc32 = struct.pack('<I', calc_crc32(header))
     return header + checksum + crc32
+
+# This function generates a header-only image (no firmware body)
+def generate_header_only_image(chip_model: str, custom_info: str, xdata: list, include_footer: bool = True) -> bytes:
+    header = generate_header(chip_model, custom_info, xdata)
+    footer_map = {
+        "Prom": b"3306A_RCFG",
+        "PromLP": b"3306B_RCFG",
+        "Prom19": b"3308A_RCFG",
+        "Prom21": b"3328A_RCFG",
+    }
+    footer = b""
+    if include_footer:
+        footer = footer_map.get(chip_model)
+        if footer is None:
+            raise ValueError(f"Unsupported chip model for header-only image: {chip_model}")
+    body_size = struct.pack('<I', 0)
+    body_checksum = bytes([0])
+    body_crc32 = struct.pack('<I', 0)
+    return header + body_size + footer + body_checksum + body_crc32
 
 # This function extract RAW firmware without AGESA's header and PSP's HMAC signature
 def extract_firmware(data: bytes, output_dir: str, ignore_checksum: bool, spi_mode: bool, custom_info: str, xdata: list, seen_hashes: set) -> int:
@@ -230,7 +267,11 @@ def main() -> int:
     parser.add_argument("-i", "--ignore-checksum", action="store_true", help="Extract firmware even if checksum does not match.")
     parser.add_argument("-wh", "--write-header", action="store_true", help="Advanced: Add header to extracted firmware for SPI loading")
     parser.add_argument("-wc", "--write-custom", help="Advanced: Add custom string to firmware header (up to 16 ASCII chars).")
-    parser.add_argument("-wx", "--write-xdata", help="Advanced: Add config(s) to header, Value must in HEX format, Example: -wx \"[['0xFFFF', 'FFFF'], ['$Address', '$Value']]\"")
+    parser.add_argument("-wx", "--write-xdata", help="Advanced: Add config(s) to header (HEX). Format: [addr,value] or [seg,addr,value] (seg defaults to 0). Example: -wx \"[['0','0xFFFF','FFFF'], ['1','C520','12345678']]\"")
+    parser.add_argument("--header-only", action="store_true", help="Generate a header-only image (no firmware body).")
+    parser.add_argument("--chip-model", choices=["Prom", "PromLP", "Prom19", "Prom21"], help="Chip model for header-only output.")
+    parser.add_argument("--header-output", help="Output filename for header-only image (default: PROMxx_HEADER_ONLY.bin).")
+    parser.add_argument("--no-footer", action="store_true", help="Omit the RCFG footer signature in header-only mode.")
     args = parser.parse_args()
 
     total_extracted = 0
@@ -243,6 +284,39 @@ def main() -> int:
         args.write_header = True
         print(f"Info: --write-xdata is specified, --write-header has been enabled automatically")
             
+    xdata_list = []
+    if args.write_xdata:
+        try:
+            xdata_list = ast.literal_eval(args.write_xdata)
+            if not isinstance(xdata_list, list):
+                raise ValueError("write_xdata is not a list")
+        except Exception as e:
+            print(f"Error parsing --write-xdata: {e}", file=sys.stderr)
+            return 1
+
+    if args.header_only:
+        if not args.chip_model:
+            print("Error: --chip-model is required with --header-only.", file=sys.stderr)
+            return 1
+        output_dir = args.output_directory
+        os.makedirs(output_dir, exist_ok=True)
+        default_name = f"{args.chip_model.upper()}_HEADER_ONLY.bin"
+        out_path = os.path.join(output_dir, args.header_output or default_name)
+        try:
+            header_img = generate_header_only_image(
+                args.chip_model,
+                args.write_custom,
+                xdata_list,
+                include_footer=not args.no_footer,
+            )
+            with open(out_path, "wb") as f:
+                f.write(header_img)
+            print(f"Info: Header-only image written to: {out_path}")
+            return 0
+        except Exception as e:
+            print(f"Error: Failed to generate header-only image: {e}", file=sys.stderr)
+            return 1
+
     if args.input_directory:
         if not os.path.isdir(args.input_directory):
             print(f"Error: '{args.input_directory}' is not a valid directory.", file=sys.stderr)
@@ -259,7 +333,7 @@ def main() -> int:
         total_extracted += process_file(args.input_file, args.output_directory, args.ignore_checksum, args.write_header, args.write_custom, args.write_xdata, seen_hashes)
 
     else:
-        print(f"Error: You must specify either --input-file or --input-directory.", file=sys.stderr)
+        print(f"Error: You must specify either --input-file or --input-directory (or use --header-only).", file=sys.stderr)
         return 1
 
     if total_extracted > 0:
