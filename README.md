@@ -2,11 +2,21 @@
 
 > This project aims to NTR Prom FCH to other platform(s).
 
+The firmware configuration tool is now available:\
+[https://utils.kolabo.dev/promfit/](https://utils.kolabo.dev/promfit/) \
+Tool Repo: \
+[https://github.com/kolabodevs/web_utils/tree/main/promfit/](https://github.com/kolabodevs/web_utils/tree/main/promfit)
+
+Open source hardware design (by another user):\
+[https://www.bilibili.com/video/BV1AXv4BvE4T/](https://www.bilibili.com/video/BV1AXv4BvE4T/) \
+[https://oshwhub.com/wesd/b650/](https://oshwhub.com/wesd/b650/)
+
 ## Repo Contents:
 1. Python script for extracting firmware from UEFI BIOS images
 2. Fusion360/KiCad Library (footprints, symbols)
 3. Reference Schematic(s)
 4. XLSX file(s) containing pinout and strapping information
+5. (ETA:March) Firmware Update Tool (MPTool)
 
 ### Proof of Concept
 NTR works\
@@ -59,19 +69,31 @@ This project focus on the "Promontory" HW/FW, not the "Bixby" FW/HW.
 "Bixby" on the other end, it's an matisse IO-DIE(FCH) on GF 14nm process (rumors), and requires CPU's PSP to configure it via PCIe DMA to init the Bixby MP0/MP1
 
 ## Chipset models:
-| Codename | Part Number | Marketing |
-| --- | --- | --- |
-| Prom    | 218-0891004 | A320 |
-| Prom    | 218-0891005 | B350 | 
-| Prom    | 218-0891006 | X370 |
-| Prom LP | 218-0891011 | B450 |
-| Prom LP | 218-0891008 | X470 |
-| Prom 19 | 218-0891015 | A520 | 
-| Prom 19 | 218-0891014 | B550 | 
-| Prom 19 | 218-0891005 | A620A| 
-| Prom 19 | 218-0891026 | B840 | 
-| Prom 21 | 218-0891020 | A620 | 
-| Prom 21 | 218-0891018 | B650/X670 |
+| Codename | Part Number | Marketing | xHCI ID |
+| --- | --- | --- | --- |
+| Prom    | 218-0891004 | A320 | 0x43BC |
+| Prom    | 218-0891005 | B350 | 0x43BB |
+| Prom    | 218-0891007 | X370 | 0x43B9 |
+| Prom    | 218-0891006 | X399 | 0x43BA |
+| Prom LP | - | A320 | 0x43D3 |
+| Prom LP | 218-0891011 | B450 | 0x43D5 |
+| Prom LP | 218-0891008 | X470 | 0x43D0 |
+| Prom LP | - | B550A | 0x43D1 |
+| Prom LP | - | Pro 560 | 0x43D2 |
+| Prom 19 | 218-0891015 | A520 | 0x43EC |
+| Prom 19 | 218-0891014 | B550 | 0x43EE |
+| Prom 19 | 218-0891023 | A620A| 0x43ED |
+| Prom 19 | - | Pro 565| 0x43EF |
+| Prom 19 | 218-0891026 | B840 | |
+| PROM21L.1 | 218-0891018 | B650/X670 | 0x43F7 |
+| PROM21L.2 | 218-0891021 | | 0x43F8 |
+| PROM21L.3 | 218-0891019 | | 0x43F9 |
+| PROM21L.4 | 218-0891020 | A620 | 0x43FA |
+| PROM21L.5 | 218-0891022 | | 0x43FB |
+| PROM21L.6 | 218-0891024 | B850/X870 | 0x43FC | 
+| PROM21L.7 | 218-0891025 | X870E | 0x43FD |
+
+
 
 
 ## License
